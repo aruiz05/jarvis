@@ -10,33 +10,25 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 TOOLS = [
     {
         "type": "function",
-        "function": {
-            "name": "create_event",
-            "description": "Create a calendar event",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    # event title
-                    "title": {"type": "string"},
-                    # start date/time in ISO format
-                    "start_iso": {"type": "string"},
-                    # end date/time in ISO format
-                    "end_iso": {"type": "string"},
-                },
-                # 3 required fields requred if create_event is called
-                "required": ["title", "start_iso", "end_iso"],
+        "name": "create_event",
+        "description": "Create a calendar event",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "start_iso": {"type": "string"},
+                "end_iso": {"type": "string"},
             },
+            "required": ["title", "start_iso", "end_iso"],
         },
     },
     {
         "type": "function",
-        "function": {
-            "name": "list_events",
-            "description": "List upcoming events",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            },
+        "name": "list_events",
+        "description": "List upcoming events",
+        "parameters": {
+            "type": "object",
+            "properties": {}
         },
     },
 ]
@@ -60,27 +52,25 @@ def run_agent(user_input):
     response = client.responses.create(
         model="gpt-4o-mini",
         input=[
-            # give the agent its instructions
             {"role": "system", "content": SYSTEM_PROMPT},
-
-            # give the users actual message
             {"role": "user", "content": user_input}
         ],
         tools=TOOLS,
+        tool_choice = "auto"
     )
 
     # loot thru to check ehat the agent decided to do
     for item in response.output:
-        if item.type == "tool_call":
+        if item.type == "function_call":
             # get name of the function the agent wants to call
-            name = item.function.name
+            name = item.name
 
 
-            if isinstance(item.function.arguments, str):
+            if isinstance(item.arguments, str):
                 # convert into dictionary
-                args = json.loads(item.function.arguments)
+                args = json.loads(item.arguments)
             else:
-                args = item.function.arguments
+                args = item.arguments
 
             if name == "create_event":
                 return create_event(**args)
