@@ -3,6 +3,7 @@ from .config import OPENAI_API_KEY
 from .calendarTools import create_event, list_events
 import json
 
+## 787878787878
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # define the tools the agent is allowed to use
