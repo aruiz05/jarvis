@@ -1,6 +1,8 @@
 from openai import OpenAI
 from .config import OPENAI_API_KEY
 from .calendarTools import create_event, list_events
+from datetime import datetime, timedelta
+from app.utils import parse_natural_time
 import json
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -16,10 +18,10 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "title": {"type": "string"},
-                "start_iso": {"type": "string"},
-                "end_iso": {"type": "string"},
+                "start_text": {"type": "string"},
+                "end_text": {"type": "string"},
             },
-            "required": ["title", "start_iso", "end_iso"],
+            "required": ["title", "start_text"],
         },
     },
     {
@@ -39,9 +41,12 @@ You are a personal calendar assistant.
 
 Rules:
 - If the user wants to schedule something, call create_event
-- If the user asks about schedule, call list_events
+- If the user asks about their schedule, call list_events
+- Extract a clear event title
+- Extract the start time exactly as natural language (e.g., "tomorrow at 5pm")
+- DO NOT generate ISO timestamps
+- Only include fields that exist in the function schema
 - Always return valid arguments
-- Use ISO datetime format: YYYY-MM-DDTHH:MM:SS
 """
 
 # main function that sends user message to agent
@@ -62,20 +67,28 @@ def run_agent(user_input):
     # loot thru to check ehat the agent decided to do
     for item in response.output:
         if item.type == "function_call":
-            # get name of the function the agent wants to call
             name = item.name
 
-
             if isinstance(item.arguments, str):
-                # convert into dictionary
                 args = json.loads(item.arguments)
             else:
                 args = item.arguments
 
             if name == "create_event":
-                return create_event(**args)
+                if "start_text" not in args:
+                    return "I couldn't understand the time. Try something like 'tomorrow at 5pm'."
+                start_iso = parse_natural_time(args["start_text"])
+
+                start_dt = datetime.fromisoformat(start_iso)
+                end_iso = (start_dt + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S")
+
+                return create_event(
+                    title=args["title"],
+                    start_iso=start_iso,
+                    end_iso=end_iso
+                )
 
             if name == "list_events":
                 return list_events()
 
-    return response.output_text
+    return response.output_text or "No response from agent"
