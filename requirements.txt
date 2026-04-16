@@ -10,3 +10,4 @@ requests
 ics
 streamlit
 python-dateutil
+schedule
