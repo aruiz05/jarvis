@@ -3,5 +3,10 @@ uvicorn
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+google-auth
 python-dotenv
 openai
+requests
+ics
+streamlit
+python-dateutil
