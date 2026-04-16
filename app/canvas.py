@@ -1,12 +1,14 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from dotenv import load_dotenv
 from ics import Calendar
 
 from .calendarTools import create_event
+from .config import TIMEZONE
 
 
 # load environment variables
@@ -48,6 +50,19 @@ def save_seen(seen_uids):
     return True
 
 
+def normalize_canvas_time(event_begin, local_timezone):
+    # treat midnight UTC assignment events as canvas due date placeholders
+    if event_begin.tzinfo == timezone.utc and event_begin.time() == time(0, 0):
+        return datetime.combine(
+            event_begin.date(),
+            time(23, 59),
+            tzinfo=local_timezone
+        )
+
+    # else use the actual event time converted to the local timezone
+    return event_begin.astimezone(local_timezone)
+
+
 def sync_canvas():
     # stop early if the canvas ICS URL is missing
     if not CANVAS_ICAL_URL:
@@ -68,6 +83,7 @@ def sync_canvas():
 
     # track current time and previously imported event IDs
     now = datetime.utcnow().replace(tzinfo=timezone.utc)
+    local_timezone = ZoneInfo(TIMEZONE)
     seen_uids = set(load_seen())
     added_count = 0
 
@@ -87,11 +103,14 @@ def sync_canvas():
             continue
 
         try:
+            # convert the event time into the local timezone before saving
+            local_begin = normalize_canvas_time(event_begin, local_timezone)
+
             # create the event in google calendar
             create_event(
                 title=event.name,
-                start_iso=event.begin.isoformat(),
-                end_iso=event.begin.isoformat()
+                start_iso=local_begin.isoformat(),
+                end_iso=local_begin.isoformat()
             )
         except Exception as exc:
             return f"Failed to create Canvas event '{event.name}': {exc}"
