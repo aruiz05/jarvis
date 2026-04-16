@@ -53,7 +53,7 @@ def parse_natural_time(text: str) -> str:
     text = _normalize_weekday_typos(text.lower().strip())
     now = datetime.now()
 
-    # "in X hours"
+    # "in x hours"
     match = re.search(r"in (\d+) hours?", text)
     if match:
         hours = int(match.group(1))
