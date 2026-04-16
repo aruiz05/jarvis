@@ -66,7 +66,7 @@ def run_agent(user_input):
     # normal text reply
     # call one of the tools
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         input=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_input}
