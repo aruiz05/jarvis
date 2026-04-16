@@ -71,14 +71,10 @@ def create_event(title, start_iso, end_iso):
     }
 
     # rend request to google calendar to create event
-    created = service.events().insert(
+    service.events().insert(
         calendarId="primary",
         body=event
     ).execute()
 
-    # return confirmation details
-    return {
-        "status": "created",
-        "title": title,
-        "link": created.get("htmlLink")
-    }
+    # return a simple message for the UI
+    return f"Added event: {title}"
