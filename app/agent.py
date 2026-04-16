@@ -1,6 +1,6 @@
 from openai import OpenAI
 from .config import OPENAI_API_KEY
-from .calendarTools import create_event, list_events
+from .calendarTools import create_event, delete_event, list_events
 from .canvas import sync_canvas
 from datetime import datetime, timedelta
 from app.utils import has_explicit_time, parse_natural_time
@@ -36,6 +36,21 @@ TOOLS = [
     },
     {
         "type": "function",
+        "name": "delete_event",
+        "description": "Delete a calendar event by title",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "The exact title of the event to delete"
+                }
+            },
+            "required": ["title"]
+        }
+    },
+    {
+        "type": "function",
         "name": "sync_canvas",
         "description": "sync canvas assignments into google calendar",
         "parameters": {
@@ -52,6 +67,7 @@ You are a personal calendar assistant.
 Rules:
 - If the user wants to schedule something, call create_event
 - If the user asks about their schedule, call list_events
+- If the user wants to delete, remove, or cancel an event, call delete_event
 - If the user asks to sync assignments or Canvas, call sync_canvas
 - Extract a clear event title
 - Extract the start time exactly as natural language (e.g., "tomorrow at 5pm")
@@ -111,6 +127,9 @@ def run_agent(user_input):
 
             if name == "list_events":
                 return list_events()
+
+            if name == "delete_event":
+                return delete_event(args["title"])
 
             if name == "sync_canvas":
                 return sync_canvas()
