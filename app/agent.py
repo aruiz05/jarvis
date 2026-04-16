@@ -2,7 +2,7 @@ from openai import OpenAI
 from .config import OPENAI_API_KEY
 from .calendarTools import create_event, list_events
 from datetime import datetime, timedelta
-from app.utils import parse_natural_time
+from app.utils import has_explicit_time, parse_natural_time
 import json
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -64,24 +64,36 @@ def run_agent(user_input):
         tool_choice = "auto"
     )
 
-    # loot thru to check ehat the agent decided to do
+    # Walk through the model output and see whether it chose to call a tool.
+    # If there is a tool call, this loop is where we translate the model's
+    # structured arguments into real Python function calls.
     for item in response.output:
         if item.type == "function_call":
             name = item.name
 
+            # The SDK can return tool arguments as either a JSON string or
+            # a parsed object, so normalize both cases into a Python dict.
             if isinstance(item.arguments, str):
                 args = json.loads(item.arguments)
             else:
                 args = item.arguments
 
             if name == "create_event":
+                # if did not provide any time text, stop and ask user for a clearer scheduling
                 if "start_text" not in args:
                     return "I couldn't understand the time. Try something like 'tomorrow at 5pm'."
+                # only create the when the user gives a time
+                # if given only date like "next wednesday", ask follow up
+                if not has_explicit_time(args["start_text"]):
+                    title = args.get("title", "that")
+                    return f"What time should I schedule {title}?"
+                # convert natural language into a concrete actual timee then default the length to one hour.
                 start_iso = parse_natural_time(args["start_text"])
 
                 start_dt = datetime.fromisoformat(start_iso)
                 end_iso = (start_dt + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S")
 
+                # once the times are ready, call the google calendar helper and return its confirmation message
                 return create_event(
                     title=args["title"],
                     start_iso=start_iso,
@@ -91,4 +103,5 @@ def run_agent(user_input):
             if name == "list_events":
                 return list_events()
 
+    # If the model answered with plain text instead of using a tool, return it.
     return response.output_text or "No response from agent"
