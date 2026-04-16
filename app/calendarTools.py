@@ -33,6 +33,31 @@ def list_events():
         for e in events.get("items", [])
     ]
 
+# delete the first upcoming event that matches the title
+def delete_event(title: str):
+    service = get_service()
+    now = datetime.utcnow().isoformat() + "Z"
+
+    # get upcoming events from the primary calendar
+    events = service.events().list(
+        calendarId="primary",
+        timeMin=now,
+        maxResults=50,
+        singleEvents=True,
+        orderBy="startTime"
+    ).execute()
+
+    # find the first title match
+    for e in events.get("items", []):
+        if e.get("summary", "").lower() == title.lower():
+            service.events().delete(
+                calendarId="primary",
+                eventId=e["id"]
+            ).execute()
+            return f"Deleted event: {title}"
+
+    return f"No event found with title: {title}"
+
 # create new calendar event
 def create_event(title, start_iso, end_iso):
     service = get_service()
